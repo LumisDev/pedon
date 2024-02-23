@@ -119,7 +119,7 @@ int main() {
     }
 
     // Load shaders
-    GLuint program = ShaderUtils::LoadShaders("default.vert.glsl", "default.frag.glsl");
+    GLuint program = ShaderUtils::LoadShaders("../shader/default.vert.glsl", "../shader/default.frag.glsl");
     if (!program) {
         std::cerr << "Failed to load shader program" << std::endl;
         glfwTerminate();
