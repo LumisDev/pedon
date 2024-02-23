@@ -52,7 +52,7 @@ int main() {
     }
 
     // Load shader program
-    program = ShaderUtils::LoadShaders("default.vert", "default.frag");
+    program = ShaderUtils::LoadShaders("default.vert.glsl", "default.frag.glsl");
     if (!program) {
         std::cerr << "Failed to load shader program" << std::endl;
         glfwTerminate();
