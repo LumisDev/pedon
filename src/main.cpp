@@ -1,121 +1,143 @@
 #include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <ShaderUtils.hpp>
 
-void initHints() {
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
-}
+class ShaderUtils {
+public:
+    static GLuint LoadShaders(const char *vertex_file_path, const char *fragment_file_path) {
+        // Create the shaders
+        GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
+        GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 
-float vertices[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        // Read the Vertex Shader code from the file
+        std::string VertexShaderCode;
+        std::ifstream VertexShaderStream(vertex_file_path, std::ios::in);
+        if (VertexShaderStream.is_open()) {
+            std::string Line = "";
+            while (getline(VertexShaderStream, Line))
+                VertexShaderCode += "\n" + Line;
+            VertexShaderStream.close();
+        } else {
+            std::cerr << "Impossible to open " << vertex_file_path << ". Are you in the right directory ? Don't forget to read the FAQ !" << std::endl;
+            return 0;
+        }
+        
+        // Read the Fragment Shader code from the file
+        std::string FragmentShaderCode;
+        std::ifstream FragmentShaderStream(fragment_file_path, std::ios::in);
+        if (FragmentShaderStream.is_open()) {
+            std::string Line = "";
+            while (getline(FragmentShaderStream, Line))
+                FragmentShaderCode += "\n" + Line;
+            FragmentShaderStream.close();
+        } else {
+            std::cerr << "Impossible to open " << fragment_file_path << ". Are you in the right directory ? Don't forget to read the FAQ !" << std::endl;
+            return 0;
+        }
+
+        // Compile Vertex Shader
+        std::cout << "Compiling shader : " << vertex_file_path << std::endl;
+        const char *VertexSourcePointer = VertexShaderCode.c_str();
+        glShaderSource(VertexShaderID, 1, &VertexSourcePointer, NULL);
+        glCompileShader(VertexShaderID);
+        
+        // Compile Fragment Shader
+        std::cout << "Compiling shader : " << fragment_file_path << std::endl;
+        const char *FragmentSourcePointer = FragmentShaderCode.c_str();
+        glShaderSource(FragmentShaderID, 1, &FragmentSourcePointer, NULL);
+        glCompileShader(FragmentShaderID);
+
+        // Check Vertex Shader
+        CheckShader(VertexShaderID);
+
+        // Check Fragment Shader
+        CheckShader(FragmentShaderID);
+
+        // Link the program
+        std::cout << "Linking program\n";
+        GLuint ProgramID = glCreateProgram();
+        glAttachShader(ProgramID, VertexShaderID);
+        glAttachShader(ProgramID, FragmentShaderID);
+        glLinkProgram(ProgramID);
+
+        // Check the program
+        GLint Result = GL_FALSE;
+        int InfoLogLength;
+        glGetProgramiv(ProgramID, GL_LINK_STATUS, &Result);
+        glGetProgramiv(ProgramID, GL_INFO_LOG_LENGTH, &InfoLogLength);
+        if (InfoLogLength > 0) {
+            std::vector<char> ProgramErrorMessage(InfoLogLength + 1);
+            glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
+            std::cerr << &ProgramErrorMessage[0] << std::endl;
+        }
+
+        glDeleteShader(VertexShaderID);
+        glDeleteShader(FragmentShaderID);
+
+        return ProgramID;
+    }
+
+private:
+    static void CheckShader(GLuint shaderID) {
+        GLint Result = GL_FALSE;
+        int InfoLogLength;
+        glGetShaderiv(shaderID, GL_COMPILE_STATUS, &Result);
+        glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
+        if (InfoLogLength > 0) {
+            std::vector<char> ShaderErrorMessage(InfoLogLength + 1);
+            glGetShaderInfoLog(shaderID, InfoLogLength, NULL, &ShaderErrorMessage[0]);
+            std::cerr << &ShaderErrorMessage[0] << std::endl;
+        }
+    }
 };
 
 int main() {
     GLFWwindow* window;
-    GLuint VBO = 0, VAO = 0, program = 0;
 
-    // Initialize GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
+    /* Initialize the library */
+    if (!glfwInit())
         return -1;
-    }
 
-    // Set GLFW window hints
-    initHints();
-
-    // Create a GLFW window
-    window = glfwCreateWindow(1000, 1000, "Pedon The Game", NULL, NULL);
+    /* Create a windowed mode window and its OpenGL context */
+    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
     if (!window) {
-        std::cerr << "Failed to open GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
 
-    // Make the OpenGL context current
+    /* Make the window's context current */
     glfwMakeContextCurrent(window);
 
     // Initialize GLEW
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
-        glfwTerminate();
+    GLenum err = glewInit();
+    if (err != GLEW_OK) {
+        std::cerr << "GLEW initialization failed: " << glewGetErrorString(err) << std::endl;
         return -1;
     }
 
-    // Load shader program
-    program = ShaderUtils::LoadShaders("default.vert.glsl", "default.frag.glsl");
+    // Load shaders
+    GLuint program = ShaderUtils::LoadShaders("default.vert.glsl", "default.frag.glsl");
     if (!program) {
         std::cerr << "Failed to load shader program" << std::endl;
         glfwTerminate();
         return -1;
     }
 
-    // Set OpenGL clear color and enable depth testing
-    glClearColor(0.529f, 0.808f, 0.922f, 1.0f);
-    glEnable(GL_DEPTH_TEST);
-
-    // Set viewport and framebuffer size callback
-    glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
-        glViewport(0, 0, width, height);
-    });
-
-    // Generate and bind the VAO
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-    // Generate and bind the VBO
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-    // Set the buffer data
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Specify the layout of the vertex data
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // Unbind the VBO and VAO
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    // Main rendering loop
+    /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
-        // Clear the screen
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        /* Render here */
+        glClear(GL_COLOR_BUFFER_BIT);
 
-        // Use the shader program
-        glUseProgram(program);
-
-        // Bind the VAO
-        glBindVertexArray(VAO);
-
-        // Draw the object
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
-        // Unbind the VAO
-        glBindVertexArray(0);
-
-        // Swap buffers and poll events
+        /* Swap front and back buffers */
         glfwSwapBuffers(window);
+
+        /* Poll for and process events */
         glfwPollEvents();
     }
 
-    // Clean up
-    glDeleteBuffers(1, &VBO);
-    glDeleteVertexArrays(1, &VAO);
-    glfwDestroyWindow(window);
     glfwTerminate();
-
     return 0;
 }

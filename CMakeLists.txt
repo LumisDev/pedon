@@ -6,7 +6,7 @@ add_subdirectory(deps/glew)
 add_subdirectory(deps/glm)
 
 set(glew-cmake_BUILD_STATIC ON)
-add_executable(pedon src/main.cpp src/ShaderUtils.cpp)
+add_executable(pedon src/main.cpp)
 target_include_directories(pedon PUBLIC ${glfw_SOURCE_DIR}/include ${glew_SOURCE_DIR}/include ${glm_SOURCE_DIR} ./include)
 target_link_libraries(pedon PUBLIC glfw libglew_static glm)
 # add_dependencies(pedon glfw libglew_shared)
